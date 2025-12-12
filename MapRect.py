@@ -14,8 +14,99 @@ class MapRectSignals(QObject):
 
 
 class MapRect(QGraphicsRectItem):
-    EDGE_MARGIN = 8  # pixels for "hot area" to resize
 
+    def paint(self, painter, option, widget=None):
+        # Save the original state of the option
+        original_option = option
+
+        # Create a copy of the option and remove the selection state
+        # This prevents the default selection border from being drawn
+        option.state &= ~QStyle.State_Selected
+
+        if self.texture_pixmap and not self.texture_pixmap.isNull():
+
+            t = QTransform()
+
+            # Get the center of the rectangle for rotation
+            rect_center_x = self.rect().center().x()
+            rect_center_y = self.rect().center().y()
+
+            # Apply translation to center for rotation
+            t.translate(rect_center_x, rect_center_y)
+
+            # Apply rotation
+            t.rotate(self.texture_rotation)
+
+            # Translate back
+            t.translate(-rect_center_x, -rect_center_y)
+
+            # Apply offset in the item's local coordinate system
+            t.translate(self.texture_offset_x, self.texture_offset_y)
+
+            # Create the brush with the texture
+            brush = QBrush(self.texture_pixmap)
+
+            # Get the top-left point of the rectangle
+            top_left_point = self.rect().topLeft()
+
+            # Create a QTransform and translate it to the top-left of your rect.
+            # This aligns the texture's origin with the top-left corner of the shape you are about to draw.
+            t.translate(top_left_point.x(), top_left_point.y())
+
+            # Apply scale last
+            t.scale(self.texture_scale, self.texture_scale)
+
+            # Apply the transform to the brush
+            brush.setTransform(t)
+
+            # Set the brush on the painter
+            painter.setBrush(brush)
+            painter.setPen(Qt.NoPen)  # don't draw an outline
+
+            # Draw the shape
+            painter.drawRect(self.rect())
+
+            painter.restore()
+
+            if getattr(self, "_show_scale_overlay", False):
+                rect = self.rect()
+                overlay_text = f"Scale: {self.texture_scale}x"
+                painter.save()
+                painter.setPen(Qt.white)
+                painter.setBrush(QColor(0, 0, 0, 180))
+                text_rect = QRectF(rect.left() + 10, rect.top() + 10, 100, 30)
+                painter.drawRect(text_rect)
+                painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, overlay_text)
+                painter.restore()
+            if getattr(self, "_show_texture_offset_overlay", False):
+                rect = self.rect()
+                overlay_text = f"Offset: x={self.texture_offset_x:.1f}, y={self.texture_offset_y:.1f}"
+                painter.save()
+                painter.setPen(Qt.white)
+                painter.setBrush(QColor(0, 0, 0, 180))
+                # Draw the overlay below the scale overlay, or wherever you prefer
+                text_rect = QRectF(rect.left() + 10, rect.top() + 10, 180, 30)
+                painter.drawRect(text_rect)
+                painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, overlay_text)
+                painter.restore()
+
+            if getattr(self, "_show_rotation_overlay", False):
+                rect = self.rect()
+                overlay_text = f"Rotation: {self.texture_rotation:.1f}°"
+                painter.save()
+                painter.setPen(Qt.white)
+                painter.setBrush(QColor(0, 0, 0, 180))
+                # Draw the overlay below the other overlays
+                text_rect = QRectF(rect.left() + 10, rect.top() + 10, 180, 30)
+                painter.drawRect(text_rect)
+                painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, overlay_text)
+                painter.restore()
+        else:
+            super().paint(painter, option, widget)
+
+
+
+    EDGE_MARGIN = 8  # pixels for "hot area" to resize
     def __init__(self, rect, parent=None):
         super().__init__()
 
@@ -518,99 +609,6 @@ class MapRect(QGraphicsRectItem):
         else:
             super().wheelEvent(event)
 
-    def paint(self, painter, option, widget=None):
-        # Save the original state of the option
-        original_option = option
-        
-        # Create a copy of the option and remove the selection state
-        # This prevents the default selection border from being drawn
-        option.state &= ~QStyle.State_Selected
-        
-        if self.texture_pixmap and not self.texture_pixmap.isNull():
-
-            t = QTransform()
-            
-            # Get the center of the rectangle for rotation
-            rect_center_x = self.rect().center().x()
-            rect_center_y = self.rect().center().y()
-            
-            # Apply translation to center for rotation
-            t.translate(rect_center_x, rect_center_y)
-            
-            # Apply rotation
-            t.rotate(self.texture_rotation)
-            
-            # Translate back
-            t.translate(-rect_center_x, -rect_center_y)
-            
-            # Apply offset in the item's local coordinate system
-            t.translate(self.texture_offset_x, self.texture_offset_y)
-
-            # Create the brush with the texture
-            brush = QBrush(self.texture_pixmap)
-
-            # Get the top-left point of the rectangle
-            top_left_point = self.rect().topLeft()
-
-            # Create a QTransform and translate it to the top-left of your rect.
-            # This aligns the texture's origin with the top-left corner of the shape you are about to draw.
-            t.translate(top_left_point.x() + self.texture_offset_x, top_left_point.y() + self.texture_offset_y)
-
-            # Apply scale last
-            t.scale(self.texture_scale, self.texture_scale)
-
-            # Apply the transform to the brush
-            brush.setTransform(t)
-
-            # Set the brush on the painter
-            painter.setBrush(brush)
-            painter.setPen(Qt.NoPen)  # Optional: don't draw an outline
-
-            # Draw the shape
-            painter.drawRect(self.rect())
-
-            painter.restore()
-
-
-
-            if getattr(self, "_show_scale_overlay", False):
-                rect = self.rect()
-                overlay_text = f"Scale: {self.texture_scale}x"
-                painter.save()
-                painter.setPen(Qt.white)
-                painter.setBrush(QColor(0, 0, 0, 180))
-                text_rect = QRectF(rect.left() + 10, rect.top() + 10, 100, 30)
-                painter.drawRect(text_rect)
-                painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, overlay_text)
-                painter.restore()
-            if getattr(self, "_show_texture_offset_overlay", False):
-                rect = self.rect()
-                overlay_text = f"Offset: x={self.texture_offset_x:.1f}, y={self.texture_offset_y:.1f}"
-                painter.save()
-                painter.setPen(Qt.white)
-                painter.setBrush(QColor(0, 0, 0, 180))
-                # Draw the overlay below the scale overlay, or wherever you prefer
-                text_rect = QRectF(rect.left() + 10, rect.top() + 10, 180, 30)
-                painter.drawRect(text_rect)
-                painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, overlay_text)
-                painter.restore()
-                
-            if getattr(self, "_show_rotation_overlay", False):
-                rect = self.rect()
-                overlay_text = f"Rotation: {self.texture_rotation:.1f}°"
-                painter.save()
-                painter.setPen(Qt.white)
-                painter.setBrush(QColor(0, 0, 0, 180))
-                # Draw the overlay below the other overlays
-                text_rect = QRectF(rect.left() + 10, rect.top() + 10, 180, 30)
-                painter.drawRect(text_rect)
-                painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, overlay_text)
-                painter.restore()
-        else:
-            super().paint(painter, option, widget)
-        
-        # We don't draw the selection border here anymore, it will be drawn in paintSelectionBorder
-        
     def paintSelectionBorder(self, painter):
         """Draw the selection border on top of everything else"""
         if self.isSelected():

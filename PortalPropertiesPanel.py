@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QPointF
-from PyQt5.QtWidgets import QWidget, QFormLayout, QDoubleSpinBox, QComboBox, QVBoxLayout, QSpinBox
+from PyQt5.QtWidgets import QWidget, QFormLayout, QDoubleSpinBox, QComboBox, QVBoxLayout, QSpinBox, QCheckBox
+
 
 class PortalPropertiesPanel(QWidget):
     def __init__(self, parent=None):
@@ -7,11 +8,11 @@ class PortalPropertiesPanel(QWidget):
         # Use a QVBoxLayout as the main layout to match other property panels
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
-        
+
         # Add the form layout to the main layout
         self.layout = QFormLayout()
         self.main_layout.addLayout(self.layout)
-        
+
         # Add stretch at the bottom to match other property panels
         self.main_layout.addStretch()
 
@@ -24,11 +25,16 @@ class PortalPropertiesPanel(QWidget):
         self.type_combo.currentTextChanged.connect(self._on_type_changed)
         self.layout.addRow("Type:", self.type_combo)
 
-        # Ammo count
+        # ID
         self.id_spin = QSpinBox()
         self.id_spin.setRange(0, 1000)
         self.id_spin.valueChanged.connect(self._on_edit)
         self.layout.addRow("ID:", self.id_spin)
+
+        # Flipped
+        self.flipped_spin = QCheckBox()
+        self.flipped_spin.toggled.connect(self._on_edit)
+        self.layout.addRow("Flipped:", self.flipped_spin)
 
         # Position controls
         self.x_spin = QDoubleSpinBox()
@@ -65,8 +71,8 @@ class PortalPropertiesPanel(QWidget):
         if delta_x != 0 or delta_y != 0:
             self._portal.setPos(self._portal.pos() + QPointF(delta_x, delta_y))
 
-        # Update ammo count
         self._portal.ID = self.id_spin.value()
+        self._portal.flipped = self.flipped_spin.isChecked()
 
         # Update item appearance
         self._portal.update()
@@ -99,8 +105,8 @@ class PortalPropertiesPanel(QWidget):
         else:
             self.type_combo.setCurrentIndex(0)
 
-        # Set ammo
         self.id_spin.setValue(getattr(portal, "ID", 0))
+        self.flipped_spin.setChecked(getattr(portal, "flipped", False))
 
         # Set position and size
         scene_x = portal.pos().x() + rect.x()

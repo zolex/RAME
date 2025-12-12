@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QGraphicsView, QFileDialog, QToolBar,
     QAction,  QSplitter, QDockWidget, QMessageBox
 )
-from PyQt5.QtGui import QPixmap, QIcon, QPainter, QColor, QBrush, QVector2D
+from PyQt5.QtGui import QPixmap, QIcon, QPainter, QColor, QBrush
 from PyQt5.QtCore import Qt, QRectF, QPointF, QSizeF, QSettings, QSize
 
 import utils
@@ -730,8 +730,8 @@ class MapDesigner(QMainWindow):
                     d = {
                         "x": item.pos().x() + item.rect().x(),
                         "y": item.pos().y() + item.rect().y(),
-                        "vel_x": item.vel.x(),
-                        "vel_y": item.vel.y(),
+                        "vel": getattr(item, 'velocity', 0.3),
+                        "rotation": item.rotation(),
                     }
                     jump_pads.append(d)
                 elif isinstance(item, MapPortal) and item.item_type == "entry":
@@ -754,8 +754,10 @@ class MapDesigner(QMainWindow):
                     d = {
                         "entry_x": item.pos().x() + item.rect().x(),
                         "entry_y": item.pos().y() + item.rect().y(),
+                        "entry_flipped": item.flipped,
                         "exit_x": exit.pos().x() + exit.rect().x(),
-                        "exit_y": exit.pos().y() + exit.rect().y()
+                        "exit_y": exit.pos().y() + exit.rect().y(),
+                        "exit_flipped": exit.flipped,
                     }
                     portals.append(d)
 
@@ -924,11 +926,11 @@ class MapDesigner(QMainWindow):
                                 continue
 
                             # Create entry portal
-                            entry_portal = MapPortal(QPointF(pt["entry_x"], pt["entry_y"]), "entry")
+                            entry_portal = MapPortal(QPointF(pt["entry_x"], pt["entry_y"]), "entry", pt.get("entry_flipped", False))
                             entry_portal.ID = index
                             self.scene.addItem(entry_portal)
 
-                            exit_portal  = MapPortal(QPointF(pt["exit_x"], pt["exit_y"]), "exit")
+                            exit_portal  = MapPortal(QPointF(pt["exit_x"], pt["exit_y"]), "exit", pt.get("exit_flipped", False))
                             exit_portal.ID = index
                             self.scene.addItem(exit_portal)
                         except Exception as e:
@@ -937,18 +939,42 @@ class MapDesigner(QMainWindow):
                 # Handle Jump Pads
                 if "jump_pads" in data:
                     for jp in data["jump_pads"]:
-                        #try:
-                        # Create item with proper error checking
-                        if "x" not in jp or "y" not in jp or "vel_x" not in jp or "vel_y" not in jp:
-                            self.statusBar().showMessage(
-                                f"Warning: Skipping Jump Pad with missing data", 3000)
-                            continue
+                        try:
+                            if "x" not in jp or "y" not in jp:
+                                self.statusBar().showMessage(
+                                    f"Warning: Skipping Jump Pad with missing position", 3000)
+                                continue
 
-                        # Create item at origin first, then we'll set position
-                        item = MapJumpPad(QPointF(jp["x"], jp["y"]), QVector2D(jp["vel_x"], jp["vel_y"]))
-                        self.scene.addItem(item)
-                        #except Exception as e:
-                         #   self.statusBar().showMessage(f"Error loading Jump Pad: {str(e)}", 3000)
+                            pos = QPointF(jp["x"], jp["y"])
+
+                            # New format: single velocity and rotation
+                            if "vel" in jp:
+                                item = MapJumpPad(pos, jp.get("vel", 0.3))
+                                if "rotation" in jp:
+                                    try:
+                                        item.setRotation(float(jp["rotation"]))
+                                    except Exception:
+                                        pass
+                            # Legacy format: vel_x, vel_y → compute magnitude and rotation
+                            elif "vel_x" in jp and "vel_y" in jp:
+                                vx = float(jp.get("vel_x", 0.0))
+                                vy = float(jp.get("vel_y", 0.0))
+                                # Compute speed magnitude
+                                speed = (vx ** 2 + vy ** 2) ** 0.5
+                                item = MapJumpPad(pos, speed)
+                                # Compute rotation in degrees from vector, atan2 returns radians
+                                import math
+                                angle_rad = math.atan2(vy, vx)
+                                angle_deg = math.degrees(angle_rad)
+                                item.setRotation(angle_deg)
+                            else:
+                                self.statusBar().showMessage(
+                                    f"Warning: Skipping Jump Pad with missing velocity", 3000)
+                                continue
+
+                            self.scene.addItem(item)
+                        except Exception as e:
+                            self.statusBar().showMessage(f"Error loading Jump Pad: {str(e)}", 3000)
 
             # Set the textures folder to be next to the YAML file
             textures_path = os.path.join(os.path.dirname(self.filename), 'textures')

@@ -12,7 +12,7 @@ class MapPortalSignals(QObject):
     portalChanged = pyqtSignal(object)
 
 class MapPortal(QGraphicsRectItem):
-    def __init__(self, pos: QPointF, type="entry", parent=None):
+    def __init__(self, pos: QPointF, type="entry", flipped=False, parent=None):
         super().__init__(QRectF(0, 0, 128, 128), parent)
         self.signals = MapPortalSignals()
 
@@ -29,6 +29,7 @@ class MapPortal(QGraphicsRectItem):
         
         # Set default properties
         self.item_type = type  # Can be "entry" or "exit"
+        self.flipped = flipped
         self.ID = 0
 
     def itemChange(self, change, value):
@@ -65,6 +66,7 @@ class MapPortal(QGraphicsRectItem):
     
     def contextMenuEvent(self, event):
         menu = QMenu()
+        flip_act = menu.addAction("Flip")
         del_act = menu.addAction("Delete")
         action = menu.exec_(event.screenPos())
         if action == del_act:
@@ -78,6 +80,9 @@ class MapPortal(QGraphicsRectItem):
                 # Delete just this item
                 scene.removeItem(self)
                 del self
+        elif action == flip_act:
+            self.flipped = not self.flipped
+            self.signals.portalChanged.emit(self)
     
     def paint(self, painter, option, widget=None):
         # Save the original state of the option
@@ -91,6 +96,11 @@ class MapPortal(QGraphicsRectItem):
         else:
             texture_path = "assets/portal_exit.png"
         texture_pixmap = QPixmap(texture_path)
+
+        if self.flipped:
+            transform = QTransform()
+            transform.scale(-1, 1)
+            texture_pixmap = texture_pixmap.transformed(transform)
         
         # Draw with texture
         painter.save()

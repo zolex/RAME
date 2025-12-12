@@ -1,1 +1,1 @@
-GRID_SIZE = 32
+GRID_SIZE = 16

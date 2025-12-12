@@ -1,6 +1,8 @@
 from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsItem, QMenu
 from PyQt5.QtGui import QPixmap, QCursor
 from PyQt5.QtCore import Qt, QPointF, pyqtSignal, QObject
+from PyQt5.QtGui import QTransform
+from PyQt6.QtCore import QRect
 
 from config import GRID_SIZE
 from utils import snap_value
@@ -12,8 +14,18 @@ class PlayerSpawnpoint(QGraphicsPixmapItem):
     def __init__(self, position, parent=None):
         # Load the player texture
         pixmap = QPixmap("assets/player.png")
+
+        t = QTransform()
+        t.scale(0.75, 0.75)
+        pixmap = pixmap.transformed(t)
+
+        pixmap = pixmap.copy(16, 32, 64, 96)
+
         super().__init__(pixmap)
-        
+
+
+
+
         # Set position
         self.setPos(position)
         

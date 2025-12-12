@@ -18,20 +18,14 @@ class JumpPadPropertiesPanel(QWidget):
         # Add stretch at the bottom to match other property panels
         self.main_layout.addStretch()
 
-        self._jump_pad: MapJumpPad|None = None  # Track the current edited item
+        self._jump_pad: MapJumpPad.MapJumpPad|None = None  # Track the current edited item
         self._disable_update = False  # Prevent recursion
 
-        # Velocity X
-        self.vel_x_spin = QDoubleSpinBox()
-        self.vel_x_spin.setRange(0, 10)
-        self.vel_x_spin.valueChanged.connect(self._on_edit)
-        self.layout.addRow("Velocity X:", self.vel_x_spin)
-
-        # Velocity Y
-        self.vel_y_spin = QDoubleSpinBox()
-        self.vel_y_spin.setRange(0, 10)
-        self.vel_y_spin.valueChanged.connect(self._on_edit)
-        self.layout.addRow("Velocity Y:", self.vel_y_spin)
+        # Velocity (single value)
+        self.vel_spin = QDoubleSpinBox()
+        self.vel_spin.setRange(0, 10)
+        self.vel_spin.valueChanged.connect(self._on_edit)
+        self.layout.addRow("Velocity:", self.vel_spin)
 
         # Position controls
         self.x_spin = QDoubleSpinBox()
@@ -43,6 +37,14 @@ class JumpPadPropertiesPanel(QWidget):
         self.y_spin.setRange(-1000000000, 1000000000)
         self.y_spin.valueChanged.connect(self._on_edit)
         self.layout.addRow("Y:", self.y_spin)
+
+        # Rotation
+        self.rot_spin = QDoubleSpinBox()
+        self.rot_spin.setRange(-360.0, 360.0)
+        self.rot_spin.setDecimals(1)
+        self.rot_spin.setSingleStep(1.0)
+        self.rot_spin.valueChanged.connect(self._on_edit)
+        self.layout.addRow("Rotation:", self.rot_spin)
 
     def _on_edit(self, value):
         """Handle property value changes"""
@@ -63,8 +65,10 @@ class JumpPadPropertiesPanel(QWidget):
             self._jump_pad.setPos(self._jump_pad.pos() + QPointF(delta_x, delta_y))
 
         # Update velocity
-        self._jump_pad.vel.setX(self.vel_x_spin.value())
-        self._jump_pad.vel.setY(self.vel_y_spin.value())
+        self._jump_pad.velocity = self.vel_spin.value()
+
+        # Update rotation
+        self._jump_pad.setRotation(self.rot_spin.value())
 
         # Update item appearance
         self._jump_pad.update()
@@ -91,13 +95,21 @@ class JumpPadPropertiesPanel(QWidget):
         rect = jump_pad.rect()
 
         # Set velocity
-        self.vel_x_spin.setValue(jump_pad.vel.x())
-        self.vel_y_spin.setValue(jump_pad.vel.y())
+        try:
+            self.vel_spin.setValue(getattr(jump_pad, 'velocity', 0.3))
+        except Exception:
+            pass
 
         # Set position and size
         scene_x = jump_pad.pos().x() + rect.x()
         scene_y = jump_pad.pos().y() + rect.y()
         self.x_spin.setValue(scene_x)
         self.y_spin.setValue(scene_y)
+
+        # Set rotation
+        try:
+            self.rot_spin.setValue(jump_pad.rotation())
+        except Exception:
+            pass
 
         self._disable_update = False
