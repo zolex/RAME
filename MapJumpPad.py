@@ -10,7 +10,7 @@ class MapJumpPadSignals(QObject):
 
 class MapJumpPad(QGraphicsRectItem):
     def __init__(self, pos: QPointF, velocity: float = 0.3, rotation: int = 0, parent=None):
-        super().__init__(QRectF(0, 0, 128, 42), parent)
+        super().__init__(QRectF(0, 0, 96, 32), parent)
         self.signals = MapJumpPadSignals()
         self.setPos(pos)
         self.velocity: float = velocity
